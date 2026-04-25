@@ -1,0 +1,45 @@
+video:
+  default_duration: 30  # seconds
+  min_duration: 15
+  max_duration: 60
+  formats:
+    - vertical  # 9:16 for TikTok
+    - square    # 1:1 for Instagram
+
+script:
+  language: "urdu"  # or "english" or "both"
+  tone: "engaging"  # casual, professional, engaging, humorous
+  include_hooks: true
+  include_cta: true
+  max_words: 150
+
+image:
+  style: "cinematic"  # cinematic, realistic, cartoon, anime
+  resolution: "1024x1024"
+  count_per_script: 3
+
+niches:
+  preferred:
+    - motivational
+    - educational
+    - comedy
+    - lifestyle
+    - business
+
+trending:
+  check_interval: "daily"
+  sources:
+    - "manual_research"  # Add TikTok API when available
+
+scheduling:
+  best_times:
+    - "09:00"  # Morning
+    - "12:00"  # Lunch
+    - "18:00"  # Evening
+    - "21:00"  # Night
+  timezone: "Asia/Karachi"
+  posts_per_day: 3
+
+bulk:
+  max_concurrent: 5
+  delay_between: 2  # seconds
