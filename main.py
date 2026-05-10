@@ -16,6 +16,7 @@ from src.image_generator import ImageGenerator
 from src.video_generator import VideoGenerator
 from src.scheduler import ContentScheduler
 from src.bulk_processor import BulkProcessor
+from src.youtube_clipper import YouTubeClipper
 from utils.helpers import ensure_output_dirs, load_json
 
 
@@ -254,6 +255,77 @@ def best_times():
     print(f"\n{Fore.YELLOW}💡 Tips:{Style.RESET_ALL}")
     for tip in analysis['tips']:
         print(f"  • {tip}")
+
+
+@cli.command()
+@click.argument("url")
+@click.option("--min-score", "-m", default=7.0, type=float, show_default=True,
+              help="Minimum AI virality score (0-10) a clip must reach to be saved")
+@click.option("--captions/--no-captions", default=True, show_default=True,
+              help="Burn auto-generated captions into the clips")
+@click.option("--min-duration", default=60, type=int, show_default=True,
+              help="Minimum clip length in seconds")
+@click.option("--max-duration", default=90, type=int, show_default=True,
+              help="Maximum clip length in seconds")
+@click.option("--keep-temp", is_flag=True, default=False,
+              help="Keep the downloaded source video after processing")
+def clip(url, min_score, captions, min_duration, max_duration, keep_temp):
+    """Extract ready-to-upload viral short clips from a YouTube video.
+
+    \b
+    URL   Full YouTube video URL (e.g. https://www.youtube.com/watch?v=...)
+
+    \b
+    What this does:
+      1. Downloads the video with yt-dlp
+      2. Transcribes speech with OpenAI Whisper
+      3. AI picks the most viral 60-90 s segments
+      4. Cuts each clip with ffmpeg
+      5. Applies speech-focused audio filter to reduce copyrighted background music
+      6. Optionally burns captions
+      7. Saves clips to output/clips/ ready to upload
+    """
+    print(f"\n{Fore.CYAN}╔══════════════════════════════════════════╗")
+    print("║   YouTube Viral Clips Extractor          ║")
+    print(f"╚══════════════════════════════════════════╝{Style.RESET_ALL}\n")
+
+    try:
+        clipper = YouTubeClipper()
+    except (EnvironmentError, ImportError) as exc:
+        print(f"{Fore.RED}❌ Setup error: {exc}{Style.RESET_ALL}")
+        return
+
+    try:
+        results = clipper.process(
+            url=url,
+            min_virality=min_score,
+            add_captions=captions,
+            min_clip_seconds=min_duration,
+            max_clip_seconds=max_duration,
+            keep_temp=keep_temp,
+        )
+    except Exception as exc:
+        print(f"\n{Fore.RED}❌ Processing failed: {exc}{Style.RESET_ALL}")
+        return
+
+    if not results:
+        print(f"\n{Fore.YELLOW}⚠️  No clips met the virality threshold ({min_score}).{Style.RESET_ALL}")
+        print("    Try lowering --min-score or check the video has enough speech.")
+        return
+
+    print(f"\n{Fore.GREEN}{'=' * 50}")
+    print(f"✅  {len(results)} clip(s) ready to upload!")
+    print(f"{'=' * 50}{Style.RESET_ALL}\n")
+
+    for r in results:
+        print(f"  [{r['clip_number']}] {Fore.CYAN}{r['title']}{Style.RESET_ALL}")
+        print(f"       Score  : {r['virality_score']}/10")
+        print(f"       Length : {r['duration']:.0f}s  ({r['start_time']:.1f}s–{r['end_time']:.1f}s)")
+        print(f"       Hook   : {r['hook']}")
+        print(f"       Why    : {r['why_viral']}")
+        print(f"       File   : {Fore.GREEN}{r['file_path']}{Style.RESET_ALL}\n")
+
+    print(f"{Fore.CYAN}📁 All clips saved in: output/clips/{Style.RESET_ALL}")
 
 
 @cli.command()
